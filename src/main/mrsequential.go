@@ -28,6 +28,7 @@ func main() {
 		os.Exit(1)
 	}
 
+	/// 1. 获取 plugin 中的 map 和 reduce 任务
 	mapf, reducef := loadPlugin(os.Args[1])
 
 	//
@@ -36,6 +37,8 @@ func main() {
 	// accumulate the intermediate Map output.
 	//
 	intermediate := []mr.KeyValue{}
+
+	/// 2. 循环处理每个 map 的输入文件
 	for _, filename := range os.Args[2:] {
 		file, err := os.Open(filename)
 		if err != nil {
@@ -55,7 +58,7 @@ func main() {
 	// intermediate data is in one place, intermediate[],
 	// rather than being partitioned into NxM buckets.
 	//
-
+	/// 3. 对中间数据进行排序
 	sort.Sort(ByKey(intermediate))
 
 	oname := "mr-out-0"
@@ -65,6 +68,7 @@ func main() {
 	// call Reduce on each distinct key in intermediate[],
 	// and print the result to mr-out-0.
 	//
+	// 4. reduce 操作
 	i := 0
 	for i < len(intermediate) {
 		j := i + 1

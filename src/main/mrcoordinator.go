@@ -21,6 +21,8 @@ func main() {
 	}
 
 	m := mr.MakeCoordinator(os.Args[1:], 10)
+
+	// 当 map 和 reduce 完全完成的时候，返回true
 	for m.Done() == false {
 		time.Sleep(time.Second)
 	}
