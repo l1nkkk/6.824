@@ -5,7 +5,7 @@ package main
 //
 
 import "time"
-import "6.824/pbservice"
+import "github.com/l1nkkk/6.824/src/pbservice"
 import "os"
 import "fmt"
 

@@ -22,8 +22,8 @@ import (
 	"sync"
 	"sync/atomic"
 
-	//	"6.824/labgob"
-	"6.824/labrpc"
+	//	"github.com/l1nkkk/6.824/src/labgob"
+	"github.com/l1nkkk/6.824/src/labrpc"
 )
 
 

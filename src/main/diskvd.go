@@ -16,7 +16,7 @@ package main
 //   -r restart
 
 import "time"
-import "6.824/diskv"
+import "github.com/l1nkkk/6.824/src/diskv"
 import "os"
 import "fmt"
 import "strconv"
