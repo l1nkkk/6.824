@@ -22,7 +22,27 @@ type ExampleReply struct {
 	Y int
 }
 
+
+
 // Add your RPC definitions here.
+const (
+	MAP int64 = 0
+	REDUCE int64 = 1
+)
+
+type GetTaskReply struct {
+	TaskType int64
+	MapInputName int64
+	ID int64	// map ID or reduce ID
+
+	MapCount int64
+	ReduceCount int64
+}
+
+type NoticeArgs struct {
+	TaskType int64
+	ID int64
+}
 
 
 // Cook up a unique-ish UNIX-domain socket name
