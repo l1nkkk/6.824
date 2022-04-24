@@ -26,24 +26,24 @@ type ExampleReply struct {
 
 // Add your RPC definitions here.
 const (
-	MAP int64 = 0
-	REDUCE int64 = 1
+	MAP int = 0
+	REDUCE int = 1
 )
 
 type GetTaskArgs struct {
 }
 
 type GetTaskReply struct {
-	TaskType int64		// map or reduce
+	TaskType int		// map or reduce
 	MapInputName string	// input filename
-	ID int64	// map ID or reduce ID
+	ID int	// map ID or reduce ID
 
-	MapCount int64 // 用于 reduce task
-	ReduceCount int64	// 用于 map task
+	MapCount int // 用于 reduce task
+	ReduceCount int	// 用于 map task
 	Done bool	// 所有操作已经完成
 }
 
-func CreateMapTaskReply(fileName string, id int64, rc int64) *GetTaskReply{
+func CreateMapTaskReply(fileName string, id int, rc int) *GetTaskReply{
 	return &GetTaskReply{
 			TaskType: MAP,
 			MapInputName: fileName,
@@ -52,8 +52,16 @@ func CreateMapTaskReply(fileName string, id int64, rc int64) *GetTaskReply{
 			Done: false,
 	}
 }
+func InitMapTaskReply(out *GetTaskReply, fileName string, id int, rc int){
+	out.TaskType = MAP
+	out.MapInputName = fileName
+	out.ID = id
+	out.ReduceCount = rc
+	out.Done = false
+}
 
-func CreateReduceTaskReply(id int64, mc int64) *GetTaskReply{
+
+func CreateReduceTaskReply(id int, mc int) *GetTaskReply{
 	return &GetTaskReply{
 		TaskType: REDUCE,
 		ID: id,
@@ -62,15 +70,27 @@ func CreateReduceTaskReply(id int64, mc int64) *GetTaskReply{
 	}
 }
 
+func InitReduceTaskReply(out *GetTaskReply, id int, mc int){
+	out.TaskType = REDUCE
+	out.ID = id
+	out.MapCount = mc
+	out.Done = false
+}
+
+
 func CreateDoneTaskReply() * GetTaskReply{
 	return &GetTaskReply{
 		Done: true,
 	}
 }
 
+func InitDoneTaskReply(out *GetTaskReply) {
+	out.Done = true
+}
+
 type NoticeArgs struct {
-	TaskType int64 	// map or reduce
-	ID int64		// a number
+	TaskType int 	// map or reduce
+	ID int		// a number
 }
 
 type NoticeReply struct {

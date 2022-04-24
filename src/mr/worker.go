@@ -43,21 +43,47 @@ func Worker(mapf func(string, string) []KeyValue,
 	reducef func(string, []string) string) {
 
 	// Your worker implementation here.
-
+	logger.Info.Printf("Running In Worker \n")
 	// uncomment to send the Example RPC to the coordinator.
 	//CallExample()
 	for true {
+		args := GetTaskArgs{}
 		reply := GetTaskReply{}
-		ok := call("Coordinator.GetTask", nil, &reply)
+		ok := call("Coordinator.GetTask", &args, &reply)
+
 		if ok {
+			logger.Info.Printf("call Coordinator.GetTask success, reply:%v", reply)
 			if reply.Done == true {
 				// 1. 已经没有task需要执行
 				return
 			} else if reply.TaskType == MAP {
-
+				dealMapTask(mapf, &reply)
+				goto TASKDONE
+			} else if reply.TaskType ==REDUCE{
+				dealReduceTask(reducef, &reply)
+				goto TASKDONE
+			}else{
+				logger.Panic.Panic("undefine TaskType")
 			}
 		} else {
-			panic("undefine")
+			logger.Panic.Panic("call Coordinator.GetTask error")
+		}
+	TASKDONE:
+		{
+			argsNotice := NoticeArgs{}
+			argsNotice.ID = reply.ID
+			argsNotice.TaskType = reply.TaskType
+			replyNotice := NoticeReply{}
+			ok := call("Coordinator.NoticeDone", &argsNotice, &replyNotice)
+			if ok{
+				if reply.TaskType == MAP{
+					logger.Info.Printf("MAP task: <%d,%s> done", reply.ID, reply.MapInputName)
+				}else{
+					logger.Info.Printf("REDUCE task: <%d> done", reply.ID)
+				}
+			}else{
+				logger.Panic.Panic("call Coordinator.NoticeDone error")
+			}
 		}
 	}
 
@@ -104,9 +130,10 @@ func dealMapTask(mapf func(string, string) []KeyValue, reply *GetTaskReply) {
 	}
 
 	// 3. shard  intermediate data into shardIntermediate
+	shardIntermediate = make([][]KeyValue, reply.ReduceCount)
 	for _, kv := range intermediate {
-		shardIntermediate[int64(ihash(kv.Key))%reply.ReduceCount] = append(
-			shardIntermediate[int64(ihash(kv.Key))%reply.ReduceCount],
+		shardIntermediate[ihash(kv.Key)%reply.ReduceCount] = append(
+			shardIntermediate[ihash(kv.Key)%reply.ReduceCount],
 			kv,
 			)
 	}
@@ -133,7 +160,7 @@ func dealReduceTask(reducef func(string, []string) string, reply *GetTaskReply) 
 	)
 
 	// 1. 打开并读取所有该reduce应该处理的文件
-	for i := 0; int64(i) < reply.MapCount; i++ {
+	for i := 0; i < reply.MapCount; i++ {
 		filename := "mr-" + fmt.Sprintf("%d", i) + "-" + fmt.Sprintf("%d", reply.ID)
 		if tf, err = os.Open(filename); err != nil {
 			logger.Panic.Println(err)

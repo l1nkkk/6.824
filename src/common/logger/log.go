@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"fmt"
 	"log"
 	"os"
 )
@@ -18,10 +19,17 @@ func init(){
 	//	logger.Fatalln("打开日志文件失败：",err)
 	//}
 
-	Info = log.New(os.Stdout,"Info: ",log.Ldate | log.Lmicroseconds | log.Lshortfile)
-	Warning = log.New(os.Stdout,"Warning: ",log.Ldate | log.Lmicroseconds | log.Lshortfile)
-	Error = log.New(os.Stderr,"Error: ",log.Ldate | log.Lmicroseconds | log.Lshortfile)
-	Panic = log.New(os.Stderr, "Panic: ", log.Ldate | log.Lmicroseconds | log.Lshortfile)
+	infoPre := fmt.Sprintf("%-8s%-6d", "Info:", os.Getppid())
+	Info = log.New(os.Stdout, infoPre,log.Ldate | log.Lmicroseconds | log.Lshortfile)
+
+	warnPre := fmt.Sprintf("%-8s%-6d", "Warning:", os.Getppid())
+	Warning = log.New(os.Stdout, warnPre, log.Ldate | log.Lmicroseconds | log.Lshortfile)
+
+	errorPre := fmt.Sprintf("%-8s%-6d", "Error:", os.Getppid())
+	Error = log.New(os.Stderr, errorPre, log.Ldate | log.Lmicroseconds | log.Lshortfile)
+
+	panicPre := fmt.Sprintf("%-8s%-6d", "Panic:", os.Getppid())
+	Panic = log.New(os.Stderr, panicPre, log.Ldate | log.Lmicroseconds | log.Lshortfile)
 	//Error = logger.New(io.MultiWriter(os.Stderr,errFile),"Error:",logger.Ldate | logger.Ltime | logger.Lshortfile)
 
 }
