@@ -22,7 +22,7 @@ type ShardKV struct {
 	make_end     func(string) *labrpc.ClientEnd
 	gid          int
 	ctrlers      []*labrpc.ClientEnd
-	maxraftstate int // snapshot if log grows this big
+	maxraftstate int // snapshot if logger grows this big
 
 	// Your definitions here.
 }
@@ -59,7 +59,7 @@ func (kv *ShardKV) Kill() {
 //
 // the k/v server should snapshot when Raft's saved state exceeds
 // maxraftstate bytes, in order to allow Raft to garbage-collect its
-// log. if maxraftstate is -1, you don't need to snapshot.
+// logger. if maxraftstate is -1, you don't need to snapshot.
 //
 // gid is this group's GID, for interacting with the shardctrler.
 //

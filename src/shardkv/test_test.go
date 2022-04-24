@@ -738,7 +738,7 @@ func TestUnreliable3(t *testing.T) {
 func TestChallenge1Delete(t *testing.T) {
 	fmt.Printf("Test: shard deletion (challenge 1) ...\n")
 
-	// "1" means force snapshot after every log entry.
+	// "1" means force snapshot after every logger entry.
 	cfg := make_config(t, 3, false, 1)
 	defer cfg.cleanup()
 

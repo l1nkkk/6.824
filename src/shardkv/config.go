@@ -5,7 +5,7 @@ import "github.com/l1nkkk/6.824/src/labrpc"
 import "testing"
 import "os"
 
-// import "log"
+// import "logger"
 import crand "crypto/rand"
 import "math/big"
 import "math/rand"
@@ -87,7 +87,7 @@ func (cfg *config) cleanup() {
 	cfg.checkTimeout()
 }
 
-// check that no server's log is too big.
+// check that no server's logger is too big.
 func (cfg *config) checklogs() {
 	for gi := 0; gi < cfg.ngroups; gi++ {
 		for i := 0; i < cfg.n; i++ {
