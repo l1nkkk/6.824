@@ -3,28 +3,34 @@ package mr
 import (
 	"log"
 	"sync"
+	"time"
 )
 import "net"
 import "os"
 import "net/rpc"
 import "net/http"
 
-const (
-	DONE = iota
-	DEALING
-	PENDING
-)
+//const (
+//	DONE = iota
+//	DEALING
+//	PENDING
+//)
 
 type Coordinator struct {
 	sync.Mutex
 	// Your definitions here.
-	MapInputFileRecord map[string]int64 	// 记录 map task 的输入，以及完成情况
-	MapTaskDoneCount int64			// 当前已经完成的 map task 数量
-	ReduceTaskRecord map[int64]int64 // 记录 reduce task 的完成情况
-	ReduceTaskDoneCount int64
+	MapPendingFileRecord map[string]bool 	// map，未处理的输入
+	MapDealingFileRecord map[string]bool 	// map，正在处理的输入
+	MapDoneFileRecord map[string] bool 		// map，已经处理的输入
+	MapIDToFileName map[int64]string
+	MapFileNameToID map[string]int64
 
-	MapTaskCount 	int64
-	ReduceTaskCount int64
+	ReducePendingTaskRecord map[int64]bool // reduce，未处理
+	ReduceDealingTaskRecord map[int64]bool // reduce，正在处理
+	ReduceDoneTaskRecord map[int64]bool	// reduce，已经处理
+
+	MapTaskCount 	int64		// const
+	ReduceTaskCount int64		// const
 
 }
 
@@ -43,17 +49,85 @@ func (c *Coordinator) Example(args *ExampleArgs, reply *ExampleReply) error {
 }
 
 
-func (c *Coordinator) GetTask(reply *GetTaskReply) error{
+func (c *Coordinator) GetTask(args ,reply *GetTaskReply) error{
+	for true {
+		c.Lock()
+		if len(c.MapPendingFileRecord) != 0 {
+			// 1. 如果还有 map 没有被调用
+			var key string
+			for k, _ := range c.MapPendingFileRecord {
+				key = k
+				break
+			}
 
+			reply = CreateMapTaskReply(key, c.MapFileNameToID[key], c.ReduceTaskCount)
+			delete(c.MapPendingFileRecord, key)
+			c.MapDealingFileRecord[key] = true
+			// TODO: 设置超时回调函数
+			time.AfterFunc(10*time.Second, c.timerCB( MAP,c.MapFileNameToID[key]))
+
+			return nil
+		}else if len(c.MapDealingFileRecord) != 0 {
+			// 2. 如果还有 map 没有被调用
+		}else if int64(len(c.MapDoneFileRecord)) == c.MapTaskCount &&
+			len(c.ReducePendingTaskRecord) != 0{
+			// 3. 有未出的reduce，并且当前条件可以处理reduce了
+			var key int64
+			for k, _ := range c.ReducePendingTaskRecord {
+				key = k
+				break
+			}
+			CreateReduceTaskReply(key,c.MapTaskCount)
+			delete(c.ReducePendingTaskRecord, key)
+			c.ReduceDealingTaskRecord[key] = true
+			// TODO: 设置超时回调函数
+			time.AfterFunc(10*time.Second, c.timerCB(REDUCE, key))
+
+			return nil
+		}else if len(c.ReduceDealingTaskRecord) != 0{
+			// 4. 只有正在处理的reduce
+
+		}else if int64(len(c.ReduceDoneTaskRecord)) == c.ReduceTaskCount &&
+			int64(len(c.MapDoneFileRecord)) == c.MapTaskCount{
+
+			// 5. map reduce done
+			reply = CreateDoneTaskReply()
+			return nil
+		}else{
+			panic("undefine")
+		}
+		c.Unlock()
+		time.Sleep(1 * time.Second)
+	}
 	return nil
 }
 
 func (c *Coordinator) NoticeDone(args *NoticeArgs){
-
+	c.Lock()
+	defer c.Unlock()
+	if args.TaskType == MAP{
+		delete(c.MapDealingFileRecord, c.MapIDToFileName[args.ID])
+		c.MapDoneFileRecord[c.MapIDToFileName[args.ID]] = true
+	}else if args.TaskType == REDUCE{
+		delete(c.ReduceDealingTaskRecord, args.ID)
+		c.ReduceDoneTaskRecord[args.ID] = true
+	}else{
+		panic("undefine")
+	}
 }
 
-func (c *Coordinator) timerCB(id int64){
-
+func (c *Coordinator) timerCB(taskType, id int64) func(){
+	return func() {
+		c.Lock()
+		defer c.Lock()
+		if taskType == MAP{
+			c.MapPendingFileRecord[c.MapIDToFileName[id]] = true
+		}else if taskType == REDUCE{
+			c.ReducePendingTaskRecord[id] = true
+		}else{
+			panic("undefine")
+		}
+	}
 }
 
 
@@ -83,11 +157,10 @@ func (c *Coordinator) Done() bool {
 	defer c.Unlock()
 
 	// Your code here.
-	if c.MapTaskDoneCount == c.MapTaskCount &&
-		c.ReduceTaskDoneCount == c.ReduceTaskDoneCount{
+	if int64(len(c.MapDoneFileRecord)) == c.MapTaskCount &&
+		int64(len(c.ReduceDoneTaskRecord)) == c.ReduceTaskCount{
 		ret = true
 	}
-
 
 	return ret
 }
@@ -101,6 +174,18 @@ func MakeCoordinator(files []string, nReduce int) *Coordinator {
 	c := Coordinator{}
 
 	// Your code here.
+
+	c.MapTaskCount = int64(len(files))
+	c.ReduceTaskCount = int64(nReduce)
+
+	for i,fn := range files{
+		c.MapPendingFileRecord[fn] = true
+		c.MapFileNameToID[fn] = int64(i)
+		c.MapIDToFileName[int64(i)] = fn
+	}
+	for i := 0; i < nReduce; i++{
+		c.ReducePendingTaskRecord[int64(i)] = true
+	}
 
 	c.server()
 	return &c

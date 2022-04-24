@@ -1,6 +1,10 @@
 package mr
 
-import "fmt"
+import (
+	"fmt"
+	"io/ioutil"
+	"os"
+)
 import "log"
 import "net/rpc"
 import "hash/fnv"
@@ -13,6 +17,12 @@ type KeyValue struct {
 	Key   string
 	Value string
 }
+
+type ByKey []KeyValue
+func (a ByKey) Len() int           { return len(a) }
+func (a ByKey) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a ByKey) Less(i, j int) bool { return a[i].Key < a[j].Key }
+
 
 //
 // use ihash(key) % NReduce to choose the reduce
@@ -35,8 +45,78 @@ func Worker(mapf func(string, string) []KeyValue,
 
 	// uncomment to send the Example RPC to the coordinator.
 	//CallExample()
+	for true{
+		reply := GetTaskReply{}
+		ok := call("Coordinator.GetTask", nil, &reply)
+		if ok {
+			if reply.Done == true{
+				// 1. 已经没有task需要执行
+				return
+			}else if reply.TaskType == MAP{
+
+			}
+		}else {
+			panic("undefine")
+		}
+	}
 
 }
+
+func dealMapTask(mapf func(string, string) []KeyValue, reply *GetTaskReply){
+	intermediate := []KeyValue{}
+
+	/// 1. 读取输入文件，并将其内容传入 map task 中
+	filename := reply.MapInputName
+	file, err := os.Open(filename)
+	if err != nil {
+		log.Fatalf("cannot open %v", filename)
+	}
+	content, err := ioutil.ReadAll(file)
+	if err != nil {
+		log.Fatalf("cannot read %v", filename)
+	}
+	file.Close()
+	kva := mapf(filename, string(content))
+	intermediate = append(intermediate, kva...)
+
+	// 2. 打开 nReduce 个文件
+	var ofiles []*os.File
+	defer func(){
+		for _, f := range ofiles{
+			f.Close()
+		}
+	}()
+	for i := 0; i < int(reply.ReduceCount); i++{
+		oname := "mr-"+ fmt.Sprintf("%d", reply.ID) + "-" + fmt.Sprintf("%d", i)
+		if ofile, err := os.Create(oname); err != nil{
+			panic("open file error")
+		}else{
+			ofiles = append(ofiles, ofile)
+		}
+	}
+
+	// 3. shard output intermediate data
+	for _,kv := range intermediate{
+		fmt.Fprintf(ofiles[int64(ihash(kv.Key)) % reply.ReduceCount], "%v %v\n", kv.Key, kv.Value)
+	}
+
+}
+
+func dealReduceTask(reducef func(string, []string) string, reply *GetTaskReply){
+	// 1. 打开所有该reduce应该处理的文件
+	var intermediate []KeyValue
+	for i := 0; int64(i) < reply.MapCount; i++{
+		filename := "mr-"+ fmt.Sprintf("%d", i) + "-" + fmt.Sprintf("%d", reply.ID)
+		file, err := os.Open(filename)
+
+
+	}
+
+	// 2. 归并成一个 intermediate，并排序
+
+	// 3. reduce，并输出
+}
+
 
 //
 // example function to show how to make an RPC call to the coordinator.
